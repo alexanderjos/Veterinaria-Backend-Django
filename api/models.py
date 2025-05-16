@@ -1,6 +1,5 @@
 from django.db import models
-from .choices import Estado  # Importamos los choices
-
+from .choices import Estado, Disponibilidad
 import uuid
 
 class Especialidad(models.Model):
@@ -12,15 +11,14 @@ class Especialidad(models.Model):
         default=Estado.ACTIVO,
     )
 
+    class Meta:
+        ordering = ['nombre']
+
     def __str__(self):
         return self.nombre
 
-class Producto(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    nombre = models.CharField(max_length=100)
-    descripcion = models.TextField(blank=True, null=True)
-    proveedor = models.CharField(max_length=100)
 
+class Producto(models.Model):
     CATEGORIAS = [
         ('medicamento', 'Medicamento'),
         ('vacuna', 'Vacuna'),
@@ -28,6 +26,11 @@ class Producto(models.Model):
         ('alimento', 'Alimento y suplemento'),
         ('venta', 'Producto para venta directa'),
     ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nombre = models.CharField(max_length=100)
+    descripcion = models.TextField(blank=True, null=True)
+    proveedor = models.CharField(max_length=100)
     tipo = models.CharField(max_length=20, choices=CATEGORIAS)
     subtipo = models.CharField(max_length=100, blank=True, null=True)
     stock = models.PositiveIntegerField()
@@ -39,23 +42,28 @@ class Producto(models.Model):
         default=Estado.ACTIVO,
     )
 
+    class Meta:
+        ordering = ['nombre']
+
     def __str__(self):
         return self.nombre
 
-    class Meta:
-        ordering = ['nombre']
+
 class TipoDocumento(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    nombre=models.CharField(max_length=50)
+    nombre = models.CharField(max_length=50)
     estado = models.CharField(
         max_length=10,
         choices=Estado.ESTADO_CHOICES,
         default=Estado.ACTIVO,
     )
-    def __str__(self):
-        return f"{self.nombre} "
+
     class Meta:
         ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
+
 
 class Responsable(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -68,36 +76,40 @@ class Responsable(models.Model):
     documento = models.CharField(max_length=20)
     emergencia = models.CharField(max_length=100, blank=True, null=True)
 
-    #tipodocumento = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE, related_name='tipodedocumento')
+    # Puedes descomentar esto si ya tienes el modelo TipoDocumento
+    # tipodocumento = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE, related_name='responsables')
 
-
-    def __str__(self):
-        return f"{self.nombres} {self.apellidos}"
     class Meta:
         ordering = ['nombres']
 
+    def __str__(self):
+        return f"{self.nombres} {self.apellidos}"
 
 
 class Mascota(models.Model):
+    GENERO_CHOICES = [
+        ('Hembra', 'Hembra'),
+        ('Macho', 'Macho'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombreMascota = models.CharField(max_length=100)
     especie = models.CharField(max_length=100)
     raza = models.CharField(max_length=100)
     fechaNacimiento = models.DateField()
-    genero = models.CharField(max_length=10, choices=[('Hembra', 'Hembra'), ('Macho', 'Macho')])
+    genero = models.CharField(max_length=10, choices=GENERO_CHOICES)
     peso = models.DecimalField(max_digits=5, decimal_places=2)
     color = models.CharField(max_length=50)
     observaciones = models.TextField(blank=True, null=True)
-    
     responsable = models.ForeignKey(Responsable, on_delete=models.CASCADE, related_name='mascotas')
 
-    def __str__(self):
-        return self.nombreMascota
     class Meta:
         ordering = ['nombreMascota']
 
+    def __str__(self):
+        return self.nombreMascota
 
-# Create your models here.
+
 class Consultorio(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombre = models.CharField(max_length=100)
@@ -105,14 +117,13 @@ class Consultorio(models.Model):
     disponible = models.CharField(
         max_length=10,
         choices=Disponibilidad.DISPONIBILIDAD_CHOICES,
-        default='ABIERTO'
+        default=Disponibilidad.ABIERTO,
     )
 
     class Meta:
         verbose_name = 'Consultorio'
         verbose_name_plural = 'Consultorios'
         ordering = ['nombre']
-    
+
     def __str__(self):
         return f"{self.nombre} - {self.ubicacion}"
-# Create your models here.

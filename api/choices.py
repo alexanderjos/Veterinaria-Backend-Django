@@ -1,13 +1,13 @@
 class Estado:
-    ACTIVO = "activo"
-    INACTIVO = "inactivo"
+    ACTIVO = "Activo"
+    INACTIVO = "Inactivo"
     ESTADO_CHOICES = [
-        (ACTIVO, 'activo'),
-        (INACTIVO, 'inactivo'),
+        (ACTIVO, 'Activo'),
+        (INACTIVO, 'Inactivo'),
     ]
 class Disponibilidad:
-    ABIERTO = "abierto"
-    CERRADO = "cerrado"
+    ABIERTO = "Abierto"
+    CERRADO = "Cerrado"
     DISPONIBILIDAD_CHOICES = [
         (ABIERTO, 'Abierto'),
         (CERRADO, 'Cerrado'),

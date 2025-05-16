@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from .models import Especialidad
+from .models import *
 from .serializers import *
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -14,12 +14,12 @@ class EspecialidadViewSet(viewsets.ModelViewSet):
     # Método que filtra las especialidades activas
     def get_queryset(self):
         # Solo devuelve especialidades cuyo estado sea 'ACTIVO' (insensible a mayúsculas/minúsculas)
-        return Especialidad.objects.filter(estado__iexact='activo')
+        return Especialidad.objects.filter(estado__iexact='Activo')
 
     @action(detail=True, methods=['patch'])
     def desactivar(self, request, pk=None):
         especialidad = self.get_object()
-        especialidad.estado = 'INACTIVO'
+        especialidad.estado = 'Inactivo'
         especialidad.save()
         return Response({'status': 'especialidad desactivada'})
 
@@ -39,13 +39,13 @@ class ProductoViewSet(viewsets.ModelViewSet):
 
     # Filtra productos activos por defecto
     def get_queryset(self):
-        return Producto.objects.filter(estado__iexact='activo')
+        return Producto.objects.filter(estado__iexact='Activo')
 
     # Desactiva un producto (cambia su estado a INACTIVO)
     @action(detail=True, methods=['patch'])
     def desactivar(self, request, pk=None):
         producto = self.get_object()
-        producto.estado = 'INACTIVO'
+        producto.estado = 'Inactivo'
         producto.save()
         return Response({'status': 'producto desactivado'})
 
@@ -89,3 +89,17 @@ class ConsultorioViewSet(viewsets.ModelViewSet):
         consultorio.disponible = 'ABIERTO'
         consultorio.save()
         return Response({'status': 'Consultorio abierto'})
+class TipoDocumentoViewSet(viewsets.ModelViewSet):
+    queryset = TipoDocumento.objects.all()
+    serializer_class = TipoDocumentoSerializer
+
+    def get_queryset(self):
+        # Solo devuelve tipos de documento cuyo estado sea 'ACTIVO'
+        return TipoDocumento.objects.filter(estado__iexact='activo')
+
+    @action(detail=True, methods=['patch'])
+    def desactivar(self, request, pk=None):
+        tipo_documento = self.get_object()
+        tipo_documento.estado = 'INACTIVO'
+        tipo_documento.save()
+        return Response({'status': 'Tipo de documento desactivado'})

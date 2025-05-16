@@ -1,10 +1,10 @@
 # serializers.py
 from rest_framework import serializers
-from .models import Especialidad
-from .choices import Estado
-from .models import Producto
+from .models import *
+from .choices import *
+
 class EspecialidadSerializer(serializers.ModelSerializer):
-    estado = serializers.ChoiceField(choices=Estado.ESTADO_CHOICES, required=False, allow_null=True)
+    estado = serializers.ChoiceField(choices=Estado.ESTADO_CHOICES, required=False, default=Estado.ACTIVO)
 
     class Meta:
         model = Especialidad
@@ -12,28 +12,30 @@ class EspecialidadSerializer(serializers.ModelSerializer):
 
 
 class ProductoSerializer(serializers.ModelSerializer):
-    estado = serializers.ChoiceField(choices=Estado.ESTADO_CHOICES, required=False, allow_null=True)
+    estado = serializers.ChoiceField(choices=Estado.ESTADO_CHOICES, required=False, default=Estado.ACTIVO)
 
     class Meta:
         model = Producto
         fields = ['id', 'nombre', 'descripcion', 'proveedor', 
                   'tipo', 'subtipo','stock','precio_venta','fecha_vencimiento','estado']
-        
-class TipoDocumento(serializers.ModelSerializer):
-    estado = serializers.ChoiceField(choices=Estado.ESTADO_CHOICES, required=False, allow_null=True)
+
+
+class TipoDocumentoSerializer(serializers.ModelSerializer):
+    estado = serializers.ChoiceField(choices=Estado.ESTADO_CHOICES, required=False, default=Estado.ACTIVO)
 
     class Meta:
         model = TipoDocumento
         fields = ['id', 'nombre', 'estado']
+
+
 class ResponsableSerializer(serializers.ModelSerializer):
-
-
     class Meta:
-            model = Responsable
-            fields = [
-                'id', 'nombres', 'apellidos', 'email', 'telefono',
-                'direccion', 'ciudad', 'documento', 'emergencia'
-            ]
+        model = Responsable
+        fields = [
+            'id', 'nombres', 'apellidos', 'email', 'telefono',
+            'direccion', 'ciudad', 'documento', 'emergencia'
+        ]
+
 
 class MascotaSerializer(serializers.ModelSerializer):
     responsable = ResponsableSerializer()
@@ -66,11 +68,13 @@ class MascotaSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+
+
 class ConsultorioSerializer(serializers.ModelSerializer):
     disponible = serializers.ChoiceField(
         choices=Disponibilidad.DISPONIBILIDAD_CHOICES,
         required=False,
-        allow_null=True
+        default=Disponibilidad.ABIERTO
     )
 
     class Meta:
