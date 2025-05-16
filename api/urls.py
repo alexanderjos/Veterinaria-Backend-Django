@@ -5,6 +5,4 @@ from .views import EspecialidadViewSet
 router = DefaultRouter()
 router.register(r'especialidades', EspecialidadViewSet)
 
-urlpatterns = [
-    path('api/', include(router.urls)),
-]
+urlpatterns = router.urls  # 👈 Exporta directamente las rutas del router
