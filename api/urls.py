@@ -1,8 +1,8 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import EspecialidadViewSet
+from .views import *
 
 router = DefaultRouter()
 router.register(r'especialidades', EspecialidadViewSet)
-
-urlpatterns = router.urls  # 👈 Exporta directamente las rutas del router
+router.register(r'productos', ProductoViewSet) 
+urlpatterns = router.urls
