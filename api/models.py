@@ -1,7 +1,12 @@
 from django.db import models
-from .choices import Estado, Disponibilidad
+from .choices import *
+from django.contrib.auth.models import AbstractUser
 import uuid
 
+
+
+
+# Crear el modelo de Especialidad
 class Especialidad(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombre = models.CharField(max_length=100)
@@ -17,6 +22,105 @@ class Especialidad(models.Model):
     def __str__(self):
         return self.nombre
 
+
+# Crear el modelo de TipoDocumento
+class TipoDocumento(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nombre = models.CharField(max_length=50)
+    estado = models.CharField(max_length=10, choices=Estado.ESTADO_CHOICES, default=Estado.ACTIVO)
+
+    class Meta:
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
+
+
+# Definir los roles disponibles
+class Rol(models.TextChoices):
+    ADMINISTRADOR = 'Administrador'
+    RECEPCIONISTA = 'Recepcionista'
+    VETERINARIO = 'Veterinario'
+    INVENTARIO = 'Inventario'
+
+
+# Crear el modelo de Usuario
+class Usuario(AbstractUser):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(unique=True)  # Usamos el correo como el identificador único
+    rol = models.CharField(
+        max_length=20,
+        choices=Rol.choices,  # Remove the parentheses here
+        default=Rol.RECEPCIONISTA,  # Valor por defecto
+    )
+    
+    # El campo 'username' no es necesario porque estamos usando el email
+    username = None
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []  # No requerimos campos adicionales
+
+    # Especificar `related_name` para evitar conflicto con el modelo por defecto `User`
+    groups = models.ManyToManyField(
+        'auth.Group',
+        related_name='usuario_set',  # Cambiar el related_name
+        blank=True
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        related_name='usuario_set',  # Cambiar el related_name
+        blank=True
+    )
+
+    def __str__(self):
+        return f"{self.email} ({self.get_rol_display()})"
+
+
+
+
+
+# Crear el modelo de Trabajador
+class Trabajador(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nombres = models.CharField(max_length=100)
+    apellidos = models.CharField(max_length=100)
+    email = models.EmailField()
+    telefono = models.CharField(max_length=20)
+    tipodocumento = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE, related_name='trabajadores')
+    documento = models.CharField(max_length=20)
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='trabajador')
+
+    class Meta:
+        ordering = ['nombres']
+
+    def __str__(self):
+        return f"{self.nombres} {self.apellidos}"
+
+
+class Veterinario(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    trabajador = models.OneToOneField(Trabajador, on_delete=models.CASCADE, related_name='veterinario')
+    especialidad = models.ForeignKey('Especialidad', on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return f"{self.trabajador.nombres} {self.trabajador.apellidos} - {self.especialidad.nombre}"
+
+class DiaTrabajo(models.Model):
+    DIA_CHOICES = [
+        ('LUNES', 'Lunes'),
+        ('MARTES', 'Martes'),
+        ('MIERCOLES', 'Miércoles'),
+        ('JUEVES', 'Jueves'),
+        ('VIERNES', 'Viernes'),
+        ('SABADO', 'Sábado'),
+        ('DOMINGO', 'Domingo'),
+    ]
+    veterinario = models.ForeignKey(Veterinario, on_delete=models.CASCADE, related_name='dias_trabajo')
+    dia = models.CharField(max_length=10, choices=DIA_CHOICES)
+
+    class Meta:
+        unique_together = ('veterinario', 'dia')
 
 class Producto(models.Model):
     CATEGORIAS = [
@@ -49,9 +153,11 @@ class Producto(models.Model):
         return self.nombre
 
 
-class TipoDocumento(models.Model):
+# Crear el modelo de Servicio
+class Servicio(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    nombre = models.CharField(max_length=50)
+    nombre = models.CharField(max_length=100)
+    precio = models.DecimalField(max_digits=10, decimal_places=2)
     estado = models.CharField(
         max_length=10,
         choices=Estado.ESTADO_CHOICES,
@@ -63,6 +169,20 @@ class TipoDocumento(models.Model):
 
     def __str__(self):
         return self.nombre
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class Responsable(models.Model):
@@ -91,7 +211,6 @@ class Mascota(models.Model):
         ('Hembra', 'Hembra'),
         ('Macho', 'Macho'),
     ]
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombreMascota = models.CharField(max_length=100)
     especie = models.CharField(max_length=100)

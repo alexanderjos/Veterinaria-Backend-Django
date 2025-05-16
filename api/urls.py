@@ -8,6 +8,9 @@ router.register(r'productos', ProductoViewSet)
 router.register(r'mascotas', MascotaViewSet)
 router.register(r'responsables', ResponsableViewSet)
 router.register(r'consultorios', ConsultorioViewSet)
-router.register(r'tipodocumento', TipoDocumentoViewSet)
+router.register(r'tipos-documento', TipoDocumentoViewSet)
+router.register(r'trabajadores', TrabajadorViewSet)
+router.register(r'veterinarios', VeterinarioViewSet)
+router.register(r'servicios', ServicioViewSet)
 
 urlpatterns = router.urls
