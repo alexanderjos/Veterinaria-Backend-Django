@@ -1,8 +1,9 @@
 from rest_framework import viewsets
 from .models import Especialidad
-from .serializers import EspecialidadSerializer
+from .serializers import *
 from rest_framework.decorators import action
 from rest_framework.response import Response
+
 from .models import Producto
 from .serializers import ProductoSerializer
 class EspecialidadViewSet(viewsets.ModelViewSet):
@@ -54,3 +55,37 @@ class ProductoViewSet(viewsets.ModelViewSet):
         productos = Producto.objects.all()
         serializer = self.get_serializer(productos, many=True)
         return Response(serializer.data)
+class MascotaViewSet(viewsets.ModelViewSet):
+    queryset = Mascota.objects.all()
+    serializer_class = MascotaSerializer 
+
+class ResponsableViewSet(viewsets.ModelViewSet):
+    queryset = Responsable.objects.all()
+    serializer_class = ResponsableSerializer
+class ConsultorioViewSet(viewsets.ModelViewSet):
+    queryset = Consultorio.objects.all()  # <- Esto es importante
+    serializer_class = ConsultorioSerializer
+
+    def get_queryset(self):
+        # Solo consultorios abiertos
+        return Consultorio.objects.filter(disponible__iexact='ABIERTO')
+
+    @action(detail=False, methods=['get'], url_path='all')
+    def all(self, request):
+        consultorios = Consultorio.objects.all()
+        serializer = self.get_serializer(consultorios, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['patch'], url_path='cerrar')
+    def cerrar(self, request, pk=None):
+        consultorio = self.get_object()
+        consultorio.disponible = 'CERRADO'
+        consultorio.save()
+        return Response({'status': 'Consultorio cerrado'})
+
+    @action(detail=True, methods=['patch'], url_path='abrir')
+    def abrir(self, request, pk=None):
+        consultorio = self.get_object()
+        consultorio.disponible = 'ABIERTO'
+        consultorio.save()
+        return Response({'status': 'Consultorio abierto'})
