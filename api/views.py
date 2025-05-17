@@ -45,7 +45,7 @@ class ConsultorioViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # Solo consultorios abiertos
-        return Consultorio.objects.filter(disponible__iexact='ABIERTO')
+        return Consultorio.objects.all()
 
     @action(detail=False, methods=['get'], url_path='all')
     def all(self, request):
@@ -66,7 +66,12 @@ class ConsultorioViewSet(viewsets.ModelViewSet):
         consultorio.disponible = 'ABIERTO'
         consultorio.save()
         return Response({'status': 'Consultorio abierto'})
-    
+    @action(detail=False, methods=['get'], url_path='abiertos')
+    def abiertos(self, request):
+        # Devuelve solo los tipos de documento cuyo estado es 'ACTIVO'
+        especialidad_activos = Especialidad.objects.filter(estado__iexact='abiertos')
+        serializer = self.get_serializer(especialidad_activos, many=True)
+        return Response(serializer.data)
 
 
 # ViewSet for TipoDocumento
@@ -152,6 +157,13 @@ class ServicioViewSet(viewsets.ModelViewSet):
         servicio.estado = 'Inactivo'
         servicio.save()
         return Response({'status': 'servicio desactivado'})
+
+    @action(detail=True, methods=['patch'])
+    def activar(self, request, pk=None):
+        servicio = self.get_object()
+        servicio.estado = 'Activo'
+        servicio.save()
+        return Response({'status': 'servicio activado'})
 
     # Devuelve todos los servicios, sin importar su estado
     @action(detail=False, methods=['get'], url_path='all')
