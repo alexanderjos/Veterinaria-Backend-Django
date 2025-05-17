@@ -206,7 +206,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
 
     # Filtra productos activos por defecto
     def get_queryset(self):
-        return Producto.objects.filter(estado__iexact='Activo')
+        return Producto.objects.all()
 
     # Desactiva un producto (cambia su estado a INACTIVO)
     @action(detail=True, methods=['patch'])
