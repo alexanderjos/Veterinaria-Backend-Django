@@ -29,6 +29,14 @@ class EspecialidadViewSet(viewsets.ModelViewSet):
         especialidad.estado = 'Inactivo'
         especialidad.save()
         return Response({'status': 'especialidad desactivada'})
+    # Método para activar una especialidad
+    @action(detail=True, methods=['patch'])
+    def activar(self, request, pk=None):
+        especialidad = self.get_object()
+        especialidad.estado = 'Activo'
+        especialidad.save()
+        return Response({'status': 'especialidad activada'})
+
 
     # Método para obtener todas las especialidades (activas e inactivas)
     @action(detail=False, methods=['get'], url_path='all')
