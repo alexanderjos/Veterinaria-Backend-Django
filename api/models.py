@@ -3,9 +3,6 @@ from .choices import *
 from django.contrib.auth.models import AbstractUser
 import uuid
 
-
-
-
 # Crear el modelo de Especialidad
 class Especialidad(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -171,20 +168,6 @@ class Servicio(models.Model):
         return self.nombre
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class Responsable(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombres = models.CharField(max_length=100)
@@ -195,9 +178,7 @@ class Responsable(models.Model):
     ciudad = models.CharField(max_length=100)
     documento = models.CharField(max_length=20)
     emergencia = models.CharField(max_length=100, blank=True, null=True)
-
-    # Puedes descomentar esto si ya tienes el modelo TipoDocumento
-    # tipodocumento = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE, related_name='responsables')
+    tipodocumento = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE, related_name='responsables')
 
     class Meta:
         ordering = ['nombres']
