@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from .models import *
 from .choices import *
-
+from django.contrib.auth import get_user_model
 class EspecialidadSerializer(serializers.ModelSerializer):
     estado = serializers.ChoiceField(choices=Estado.ESTADO_CHOICES, required=False, default=Estado.ACTIVO)
 
@@ -20,16 +20,42 @@ class TipoDocumentoSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre', 'estado']
 
 
-# Serializador para el modelo Usuario
 class UsuarioSerializer(serializers.ModelSerializer):
-    rol = serializers.ChoiceField(choices=Rol.ROL_CHOICES, required=False)
+    password = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Usuario
-        fields = ['id', 'email', 'rol']
+        fields = ['id', 'email', 'password', 'rol']
+        extra_kwargs = {
+            'email': {'validators': []},  # 🔧 Desactiva el validador automático de unicidad
+        }
+
+    def create(self, validated_data):
+        password = validated_data.pop('password', None)
+        usuario = Usuario.objects.create(**validated_data)
+        if password:
+            usuario.set_password(password)
+            usuario.save()
+        return usuario
+
+    def update(self, instance, validated_data):
+        email = validated_data.get('email')
+        if email and email != instance.email:
+            if Usuario.objects.filter(email=email).exclude(pk=instance.pk).exists():
+                raise serializers.ValidationError({"email": "Este correo ya está en uso."})
+
+        password = validated_data.pop('password', None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if password:
+            instance.set_password(password)
+
+        instance.save()
+        return instance
 
     def to_representation(self, instance):
-        """ Custom representation to include role name """
         representation = super().to_representation(instance)
         representation['rol'] = instance.get_rol_display()
         return representation
@@ -38,17 +64,95 @@ class UsuarioSerializer(serializers.ModelSerializer):
 # Serializador para el modelo Trabajador
 class TrabajadorSerializer(serializers.ModelSerializer):
     tipodocumento = serializers.PrimaryKeyRelatedField(queryset=TipoDocumento.objects.all())
+    tipodocumento_nombre = serializers.CharField(source='tipodocumento.nombre', read_only=True)
     usuario = UsuarioSerializer()
 
     class Meta:
         model = Trabajador
-        fields = ['id', 'nombres', 'apellidos', 'email', 'telefono', 'tipodocumento', 'documento', 'usuario']
+        fields = [
+            'id', 'nombres', 'apellidos', 'email', 'telefono',
+            'tipodocumento', 'tipodocumento_nombre', 'documento', 'usuario'
+        ]
 
     def create(self, validated_data):
-        usuario_data = validated_data.pop('usuario')  # Extraer datos del usuario
-        usuario = Usuario.objects.create(**usuario_data)  # Crear usuario
-        trabajador = Trabajador.objects.create(usuario=usuario, **validated_data)  # Crear trabajador con el usuario
+        usuario_data = validated_data.pop('usuario')
+        usuario_serializer = UsuarioSerializer(data=usuario_data)
+        usuario_serializer.is_valid(raise_exception=True)
+        usuario = usuario_serializer.save()
+
+        trabajador = Trabajador.objects.create(usuario=usuario, **validated_data)
         return trabajador
+
+    def update(self, instance, validated_data):
+        usuario_data = validated_data.pop('usuario', None)
+
+        if usuario_data:
+            usuario_serializer = UsuarioSerializer(instance.usuario, data=usuario_data, partial=True)
+            usuario_serializer.is_valid(raise_exception=True)
+            usuario_serializer.save()
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+
+class MascotaSerializer(serializers.ModelSerializer):
+    responsable = serializers.PrimaryKeyRelatedField(queryset=Responsable.objects.all())
+    nombrecompletoResponsable = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Mascota
+        fields = [
+            'id', 'nombreMascota', 'especie', 'raza', 'fechaNacimiento',
+            'genero', 'peso', 'color', 'observaciones',
+            'responsable',  # este sigue enviando el UUID
+            'nombrecompletoResponsable'
+        ]
+
+    def get_nombrecompletoResponsable(self, obj):
+        return f"{obj.responsable.nombres} {obj.responsable.apellidos}"
+
+class ResponsableSerializer(serializers.ModelSerializer):
+    usuario = UsuarioSerializer()
+    tipodocumento_nombre = serializers.CharField(source='tipodocumento.nombre', read_only=True)
+    mascotas = MascotaSerializer(many=True, read_only=True)  # Agregamos las mascotas relacionadas
+
+    class Meta:
+        model = Responsable
+        fields = [
+            'id', 'nombres', 'apellidos', 'telefono', 'direccion',
+            'ciudad', 'documento', 'tipodocumento','tipodocumento_nombre', 'emergencia', 'usuario','mascotas'
+        ]
+
+    def create(self, validated_data):
+        # Extraemos los datos del usuario del campo 'usuario'
+        usuario_data = validated_data.pop('usuario')
+
+        # Creamos el usuario usando el serializer
+        usuario_serializer = UsuarioSerializer(data=usuario_data)
+        usuario_serializer.is_valid(raise_exception=True)  # Verificamos si los datos son válidos
+        usuario = usuario_serializer.save()  # Guardamos el usuario
+
+        # Creamos el Responsable y asignamos el usuario
+        responsable = Responsable.objects.create(usuario=usuario, **validated_data)
+        return responsable
+
+    def update(self, instance, validated_data):
+        usuario_data = validated_data.pop('usuario', None)
+
+        if usuario_data:
+            # Actualizamos el usuario si hay datos nuevos
+            usuario_serializer = UsuarioSerializer(instance.usuario, data=usuario_data, partial=True)
+            usuario_serializer.is_valid(raise_exception=True)
+            usuario_serializer.save()
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+
 class DiaTrabajoSerializer(serializers.ModelSerializer):
     class Meta:
         model = DiaTrabajo
@@ -58,10 +162,10 @@ class VeterinarioSerializer(serializers.ModelSerializer):
     trabajador = serializers.PrimaryKeyRelatedField(queryset=Trabajador.objects.all())
     especialidad = serializers.PrimaryKeyRelatedField(queryset=Especialidad.objects.all())
     dias_trabajo = DiaTrabajoSerializer(many=True, required=False, allow_null=True)  # Usar el serializador anidado
-
+    nombreEspecialidad = serializers.CharField(source='especialidad.nombre', read_only=True)
     class Meta:
         model = Veterinario
-        fields = ['id', 'trabajador', 'especialidad', 'dias_trabajo']  # Incluir dias_trabajo
+        fields = ['id', 'trabajador', 'especialidad','nombreEspecialidad', 'dias_trabajo']  # Incluir dias_trabajo
 
     def create(self, validated_data):
         dias_trabajo_data = validated_data.pop('dias_trabajo', [])
@@ -124,46 +228,33 @@ class ProductoSerializer(serializers.ModelSerializer):
                   'tipo', 'subtipo','stock','precio_venta','fecha_vencimiento','estado']
 
 
-class ResponsableSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Responsable
-        fields = [
-            'id', 'nombres', 'apellidos', 'email', 'telefono',
-            'direccion', 'ciudad', 'documento', 'emergencia'
-        ]
 
 
-class MascotaSerializer(serializers.ModelSerializer):
-    responsable = ResponsableSerializer()
 
-    class Meta:
-        model = Mascota
-        fields = [
-            'id', 'nombreMascota', 'especie', 'raza', 'fechaNacimiento',
-            'genero', 'peso', 'color', 'observaciones', 'responsable'
-        ]
 
-    def create(self, validated_data):
-        responsable_data = validated_data.pop('responsable')
-        responsable = Responsable.objects.create(**responsable_data)
-        mascota = Mascota.objects.create(responsable=responsable, **validated_data)
-        return mascota
 
-    def update(self, instance, validated_data):
-        responsable_data = validated_data.pop('responsable')
-        responsable_instance = instance.responsable
 
-        # Actualizar responsable
-        for attr, value in responsable_data.items():
-            setattr(responsable_instance, attr, value)
-        responsable_instance.save()
 
-        # Actualizar mascota
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
 
-        return instance
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class ConsultorioSerializer(serializers.ModelSerializer):

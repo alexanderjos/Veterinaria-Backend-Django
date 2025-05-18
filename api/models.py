@@ -2,9 +2,7 @@ from django.db import models
 from .choices import *
 from django.contrib.auth.models import AbstractUser
 import uuid
-
-
-
+from django.conf import settings
 
 # Crear el modelo de Especialidad
 class Especialidad(models.Model):
@@ -15,13 +13,11 @@ class Especialidad(models.Model):
         choices=Estado.ESTADO_CHOICES,
         default=Estado.ACTIVO,
     )
-
     class Meta:
         ordering = ['nombre']
 
     def __str__(self):
         return self.nombre
-
 
 # Crear el modelo de TipoDocumento
 class TipoDocumento(models.Model):
@@ -35,15 +31,13 @@ class TipoDocumento(models.Model):
     def __str__(self):
         return self.nombre
 
-
-
-
 # Definir los roles disponibles
 class Rol(models.TextChoices):
     ADMINISTRADOR = 'Administrador'
     RECEPCIONISTA = 'Recepcionista'
     VETERINARIO = 'Veterinario'
     INVENTARIO = 'Inventario'
+    RESPONSABLE = 'Responsable'
 
 
 # Crear el modelo de Usuario
@@ -76,9 +70,10 @@ class Usuario(AbstractUser):
     def __str__(self):
         return f"{self.email} ({self.get_rol_display()})"
 
-
-
-
+    class Meta:
+        verbose_name = 'Usuario'
+        verbose_name_plural = 'Usuarios'
+        ordering = ['email']
 
 # Crear el modelo de Trabajador
 class Trabajador(models.Model):
@@ -97,7 +92,6 @@ class Trabajador(models.Model):
     def __str__(self):
         return f"{self.nombres} {self.apellidos}"
 
-
 class Veterinario(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     trabajador = models.OneToOneField(Trabajador, on_delete=models.CASCADE, related_name='veterinario')
@@ -105,6 +99,64 @@ class Veterinario(models.Model):
 
     def __str__(self):
         return f"{self.trabajador.nombres} {self.trabajador.apellidos} - {self.especialidad.nombre}"
+
+class Responsable(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nombres = models.CharField(max_length=100)
+    apellidos = models.CharField(max_length=100)
+    telefono = models.CharField(max_length=20)
+    direccion = models.CharField(max_length=255)
+    ciudad = models.CharField(max_length=100)
+    documento = models.CharField(max_length=20)
+    tipodocumento = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE, related_name='responsables')
+    emergencia = models.CharField(max_length=100, blank=True, null=True)
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='responsable')
+
+    class Meta:
+        ordering = ['nombres']
+
+    def __str__(self):
+        return f"{self.nombres} {self.apellidos}"
+
+class Mascota(models.Model):
+    GENERO_CHOICES = [
+        ('Hembra', 'Hembra'),
+        ('Macho', 'Macho'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nombreMascota = models.CharField(max_length=100)
+    especie = models.CharField(max_length=100)
+    raza = models.CharField(max_length=100)
+    fechaNacimiento = models.DateField()
+    genero = models.CharField(max_length=10, choices=GENERO_CHOICES)
+    peso = models.DecimalField(max_digits=5, decimal_places=2)
+    color = models.CharField(max_length=50)
+    observaciones = models.TextField(blank=True, null=True)
+    estado = models.CharField(
+        max_length=10,
+        choices=Estado.ESTADO_CHOICES,
+        default=Estado.ACTIVO,
+    )
+    responsable = models.ForeignKey(
+        Responsable,
+        on_delete=models.CASCADE,
+        related_name='mascotas'
+    )
+
+    class Meta:
+        ordering = ['nombreMascota']
+
+    def __str__(self):
+        return self.nombreMascota
+
+
+
+
+
+
+
+
 
 class DiaTrabajo(models.Model):
     DIA_CHOICES = [
@@ -145,13 +197,11 @@ class Producto(models.Model):
         choices=Estado.ESTADO_CHOICES,
         default=Estado.ACTIVO,
     )
-
     class Meta:
         ordering = ['nombre']
 
     def __str__(self):
         return self.nombre
-
 
 # Crear el modelo de Servicio
 class Servicio(models.Model):
@@ -171,64 +221,6 @@ class Servicio(models.Model):
         return self.nombre
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class Responsable(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    nombres = models.CharField(max_length=100)
-    apellidos = models.CharField(max_length=100)
-    email = models.EmailField()
-    telefono = models.CharField(max_length=20)
-    direccion = models.CharField(max_length=255)
-    ciudad = models.CharField(max_length=100)
-    documento = models.CharField(max_length=20)
-    emergencia = models.CharField(max_length=100, blank=True, null=True)
-
-    # Puedes descomentar esto si ya tienes el modelo TipoDocumento
-    # tipodocumento = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE, related_name='responsables')
-
-    class Meta:
-        ordering = ['nombres']
-
-    def __str__(self):
-        return f"{self.nombres} {self.apellidos}"
-
-
-class Mascota(models.Model):
-    GENERO_CHOICES = [
-        ('Hembra', 'Hembra'),
-        ('Macho', 'Macho'),
-    ]
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    nombreMascota = models.CharField(max_length=100)
-    especie = models.CharField(max_length=100)
-    raza = models.CharField(max_length=100)
-    fechaNacimiento = models.DateField()
-    genero = models.CharField(max_length=10, choices=GENERO_CHOICES)
-    peso = models.DecimalField(max_digits=5, decimal_places=2)
-    color = models.CharField(max_length=50)
-    observaciones = models.TextField(blank=True, null=True)
-    responsable = models.ForeignKey(Responsable, on_delete=models.CASCADE, related_name='mascotas')
-
-    class Meta:
-        ordering = ['nombreMascota']
-
-    def __str__(self):
-        return self.nombreMascota
-
-
 class Consultorio(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombre = models.CharField(max_length=100)
@@ -246,3 +238,7 @@ class Consultorio(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.ubicacion}"
+
+
+
+
