@@ -4,7 +4,8 @@ from .serializers import *
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-
+from django.shortcuts import get_object_or_404
+from rest_framework import status
 # ViewSet for Especialidad
 class EspecialidadViewSet(viewsets.ModelViewSet):
     # Definimos el queryset de manera explícita aquí
@@ -64,14 +65,14 @@ class ConsultorioViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['patch'], url_path='cerrar')
     def cerrar(self, request, pk=None):
         consultorio = self.get_object()
-        consultorio.disponible = 'CERRADO'
+        consultorio.disponible = 'Cerrado'
         consultorio.save()
         return Response({'status': 'Consultorio cerrado'})
 
     @action(detail=True, methods=['patch'], url_path='abrir')
     def abrir(self, request, pk=None):
         consultorio = self.get_object()
-        consultorio.disponible = 'ABIERTO'
+        consultorio.disponible = 'Abierto'
         consultorio.save()
         return Response({'status': 'Consultorio abierto'})
     @action(detail=False, methods=['get'], url_path='abiertos')
@@ -125,6 +126,42 @@ class TipoDocumentoViewSet(viewsets.ModelViewSet):
 class TrabajadorViewSet(viewsets.ModelViewSet):
     queryset = Trabajador.objects.all()
     serializer_class = TrabajadorSerializer
+    @action(detail=True, methods=['put'], url_path='reset-password')
+    def reset_password(self, request, pk=None):
+        trabajador = self.get_object()
+        nueva_password = request.data.get('password')
+
+        if not nueva_password or len(nueva_password) < 6:
+            return Response({'error': 'La contraseña debe tener al menos 6 caracteres.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        usuario = trabajador.usuario
+        usuario.set_password(nueva_password)
+        usuario.save()
+
+        return Response({'mensaje': 'Contraseña actualizada correctamente'}, status=status.HTTP_200_OK)
+    # Acción personalizada para editar un trabajador
+    @action(detail=True, methods=['put'], url_path='editar')
+    def edit_trabajador(self, request, pk=None):
+        trabajador = self.get_object()  # Obtiene el trabajador por pk
+        serializer = TrabajadorSerializer(trabajador, data=request.data, partial=False)  # Deserialize los datos entrantes
+
+        if serializer.is_valid():  # Si los datos del serializador son válidos
+
+            # Aquí controlamos la validación del correo antes de guardar
+            usuario_data = serializer.validated_data.get('usuario', None)  # Extraemos los datos del usuario
+            if usuario_data and usuario_data.get('email'):  # Verificamos si el correo fue proporcionado
+                email = usuario_data['email']
+
+                # Validamos que no exista un usuario con el mismo correo, excluyendo el actual
+                if Usuario.objects.filter(email=email).exclude(id=trabajador.usuario.id).exists():
+                    return Response({'error': 'El correo electrónico ya está en uso.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Si pasa la validación, se guarda
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)  # Respondemos con el trabajador actualizado
+
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  # Responde con errores si los datos no son válidos
 
 # ViewSet for Veterinario
 class VeterinarioViewSet(viewsets.ModelViewSet):
@@ -147,8 +184,13 @@ class VeterinarioViewSet(viewsets.ModelViewSet):
             DiaTrabajo.objects.create(veterinario=veterinario, dia=dia.upper())
 
         return Response({'status': 'Días asignados correctamente'})
-
-
+    #buscar el terabajador por id de trabajador
+    @action(detail=False, methods=['get'], url_path='por-trabajador/(?P<trabajador_id>[^/.]+)')
+    def por_trabajador(self, request, trabajador_id=None):
+        veterinario = get_object_or_404(Veterinario, trabajador__id=trabajador_id)
+        serializer = self.get_serializer(veterinario)
+        return Response(serializer.data)
+    
 # ViewSet for Service
 class ServicioViewSet(viewsets.ModelViewSet):
     queryset = Servicio.objects.all()
@@ -225,6 +267,32 @@ class ProductoViewSet(viewsets.ModelViewSet):
 class MascotaViewSet(viewsets.ModelViewSet):
     queryset = Mascota.objects.all()
     serializer_class = MascotaSerializer 
+
+    # Filtra mascotas activas por defecto
+    @action(detail=False, methods=['get'], url_path='activas')
+    def activos(self, request):
+        # Devuelve solo las mascotas cuyo estado es 'ACTIVO'
+        mascotas_activos = Mascota.objects.filter(estado__iexact='activo')
+        serializer = self.get_serializer(mascotas_activos, many=True)
+        return Response(serializer.data)
+    # Desactiva una mascota (cambia su estado a INACTIVO)
+    @action(detail=True, methods=['patch'],url_path='desactivar')
+    def desactivar(self, request, pk=None):
+        mascota = self.get_object()
+        mascota.estado = 'Inactivo'
+        mascota.save()
+        return Response({'status': 'mascota desactivada'})
+    # Método para activar una mascota
+    @action(detail=True, methods=['patch'], url_path='activar')
+    def activar(self, request, pk=None):
+        mascota = self.get_object()
+        mascota.estado = 'Activo'
+        mascota.save()
+        return Response({'status': 'mascota activada'})
+    
+
+
+
 
 class ResponsableViewSet(viewsets.ModelViewSet):
     queryset = Responsable.objects.all()
