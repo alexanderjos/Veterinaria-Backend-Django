@@ -24,3 +24,18 @@ class Rol:
         (INVENTARIO, 'Inventario'),
         (ADMINISTRADOR, 'Administrador'),
     ]
+
+class EstadoCita:
+    PENDIENTE = "pendiente"
+    CONFIRMADA = "confirmada"
+    COMPLETADA = "completada"
+    CANCELADA = "cancelada"
+    REPROGRAMADA = "reprogramada"
+
+    ESTADO_CHOICES = [
+        (PENDIENTE, 'Pendiente'),
+        (CONFIRMADA, 'Confirmada'),
+        (COMPLETADA, 'Completada'),
+        (CANCELADA, 'Cancelada'),
+        (REPROGRAMADA, 'Reprogramada'),
+    ]

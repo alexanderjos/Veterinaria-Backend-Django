@@ -4,6 +4,8 @@ from .serializers import *
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from .choices import *
+
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 # ViewSet for Especialidad
@@ -231,7 +233,76 @@ class ServicioViewSet(viewsets.ModelViewSet):
 
 
 
+class CitaViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para CRUD de Cita y acciones personalizadas:
+      - cambiar-estado
+      - reprogramar
+      - por-veterinario
+    """
+    queryset = Cita.objects.all()
+    serializer_class = CitaSerializer
 
+    def get_queryset(self):
+        """
+        Si se recibe query param 'veterinario_id', filtrar por ese vet;
+        de lo contrario, devolver todas las citas.
+        """
+        vet_id = self.request.query_params.get('veterinario_id')
+        if vet_id:
+            return Cita.objects.filter(veterinario__id=vet_id)
+        return Cita.objects.all()
+
+    @action(detail=True, methods=['patch'], url_path='cambiar-estado')
+    def cambiar_estado(self, request, pk=None):
+        """
+        PATCH /api/citas/{id}/cambiar-estado/
+        Body: { "estado": "<nuevo_estado>" }
+        Solo admite uno de los valores definidos en EstadoCita.ESTADO_CHOICES.
+        """
+        cita = self.get_object()
+        nuevo_estado = request.data.get('estado')
+        if nuevo_estado not in dict(EstadoCita.ESTADO_CHOICES).keys():
+            return Response(
+                {'error': f"Estado inválido: {nuevo_estado}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        cita.estado = nuevo_estado
+        cita.save()
+        return Response({'status': 'estado actualizado'}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['patch'], url_path='reprogramar')
+    def reprogramar(self, request, pk=None):
+        """
+        PATCH /api/citas/{id}/reprogramar/
+        Body: { "fecha": "YYYY-MM-DD", "hora": "HH:MM:SS" }
+        Cambia la fecha y hora y marca estado como "reprogramada".
+        """
+        cita = self.get_object()
+        nueva_fecha = request.data.get('fecha')
+        nueva_hora = request.data.get('hora')
+
+        if not nueva_fecha or not nueva_hora:
+            return Response(
+                {'error': 'Se requieren "fecha" y "hora" para reprogramar.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        cita.fecha = nueva_fecha
+        cita.hora = nueva_hora
+        cita.estado = EstadoCita.REPROGRAMADA
+        cita.save()
+        return Response({'status': 'cita reprogramada'}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='por-veterinario/(?P<veterinario_id>[^/.]+)')
+    def por_veterinario(self, request, veterinario_id=None):
+        """
+        GET /api/citas/por-veterinario/{veterinario_id}/
+        Devuelve solo las citas asignadas al veterinario con ID {veterinario_id}.
+        """
+        citas_vet = Cita.objects.filter(veterinario__id=veterinario_id)
+        serializer = self.get_serializer(citas_vet, many=True)
+        return Response(serializer.data)
 
 
 
