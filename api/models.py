@@ -150,8 +150,43 @@ class Mascota(models.Model):
     def __str__(self):
         return self.nombreMascota
 
+class Cita(models.Model):
+    """
+    Modelo que representa una cita veterinaria.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    fecha = models.DateField()
+    hora = models.TimeField()
+    mascota = models.CharField(max_length=100)
+    propietario = models.CharField(max_length=100)
 
+    # Relación con Veterinario (asumiendo que tu modelo Veterinario ya existe)
+    veterinario = models.ForeignKey(
+        'Veterinario',
+        on_delete=models.CASCADE,
+        related_name='citas'
+    )
+    # Relación con Servicio (asumiendo que tu modelo Servicio ya existe)
+    servicio = models.ForeignKey(
+        'Servicio',
+        on_delete=models.CASCADE,
+        related_name='citas'
+    )
 
+    estado = models.CharField(
+        max_length=12,
+        choices=EstadoCita.ESTADO_CHOICES,
+        default=EstadoCita.PENDIENTE
+    )
+    especie = models.CharField(max_length=50, blank=True, null=True)
+    raza = models.CharField(max_length=50, blank=True, null=True)
+    notas = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['fecha', 'hora']
+
+    def __str__(self):
+        return f"{self.fecha} {self.hora} — {self.mascota} ({self.get_estado_display()})"
 
 
 

@@ -152,6 +152,31 @@ class ResponsableSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+class CitaSerializer(serializers.ModelSerializer):
+    """
+    Serializador para el modelo Cita.
+    Relaciona veterinario y servicio mediante su ID (PK).
+    """
+    veterinario = serializers.PrimaryKeyRelatedField(queryset=Veterinario.objects.all())
+    servicio = serializers.PrimaryKeyRelatedField(queryset=Servicio.objects.all())
+
+    class Meta:
+        model = Cita
+        fields = [
+            'id',
+            'fecha',
+            'hora',
+            'mascota',
+            'propietario',
+            'veterinario',
+            'servicio',
+            'estado',
+            'especie',
+            'raza',
+            'notas'
+        ]
+        read_only_fields = ['id']
+
 
 class DiaTrabajoSerializer(serializers.ModelSerializer):
     class Meta:

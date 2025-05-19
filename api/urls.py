@@ -12,5 +12,6 @@ router.register(r'tipos-documento', TipoDocumentoViewSet)
 router.register(r'trabajadores', TrabajadorViewSet)
 router.register(r'veterinarios', VeterinarioViewSet)
 router.register(r'servicios', ServicioViewSet)
+router.register(r'citas', CitaViewSet)
 
 urlpatterns = router.urls
